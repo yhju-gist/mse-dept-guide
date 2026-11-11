@@ -88,6 +88,7 @@ function setup() {
   }
   if (!props.getProperty('ADMIN_KEY')) makeAdminKey();
   tokKey_(true);
+  tmpFolder_();   // 임시 업로드 폴더를 미리 만들어 둠 (첫 제출 때 여러 파일이 동시에 올라와도 폴더가 하나만 생기게)
   Logger.log('시트: ' + ss.getUrl());
   Logger.log('증빙 폴더: ' + DriveApp.getFolderById(props.getProperty('FOLDER_ID')).getUrl());
 }
@@ -502,7 +503,7 @@ function submit(p, token) {
     fids.forEach(fid => {
       fid = String(fid); if (own[fid]) return;   // 이전에 본인이 낸 파일 그대로 쓰기
       let ok = false;
-      try { const f = DriveApp.getFileById(fid), par = f.getParents(); ok = par.hasNext() && par.next().getId() === tmpId; if (ok) FILES[fid] = f; } catch (e) {}
+      try { const f = DriveApp.getFileById(fid), par = f.getParents(); if (par.hasNext()) { const pf = par.next(); ok = pf.getId() === tmpId || (pf.getName() === '_임시업로드' && (() => { const g = pf.getParents(); return g.hasNext() && g.next().getId() === PropertiesService.getScriptProperties().getProperty('FOLDER_ID'); })()); } if (ok) FILES[fid] = f; } catch (e) {}
       if (!ok) throw new Error('증빙 파일을 다시 올려 주세요. / Please upload the evidence file again.');
     });
 
