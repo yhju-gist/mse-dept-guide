@@ -755,6 +755,9 @@ function dt(x){if(typeof x!=='string')return x;const isM=false;const own=!isM&&D
  if(own)x=x.replace(/⟪[^⟫]*⟫/g,'');
  return x.replace(/[⟦⟧⟪⟫]/g,'')}
 function deep(o){if(o instanceof Date)return o;if(Array.isArray(o))return o.filter(v=>!(typeof v==='string'&&v!==''&&dt(v)==='')&&!(Array.isArray(v)&&v.some(x=>typeof x==='string'&&/[⟦⟪]/.test(x)&&dt(x)===''))).map(deep);if(o&&typeof o==='object'){const r={};for(const k in o)r[k]=deep(o[k]);return r}return dt(o)}
+function plain(t){let s=String(t==null?'':t),p;do{p=s;s=s.replace(/<[^>]*>/g,'')}while(s!==p);return s.replace(/</g,'')}
+function safeK(k){k=String(k);return k!=='__proto__'&&k!=='constructor'&&k!=='prototype'}
+function curSt(){const c=cur==='phd'?'phd':'ms';if(!Object.prototype.hasOwnProperty.call(state,c)||typeof state[c]!=='object'||state[c]===null)state[c]={};return state[c]}
 function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function firstContact(){const c=(DP().contacts||[])[0];return c||null}
 function renderDeptSelect(){const sel=document.getElementById('dept');const en=lang==='en';
@@ -803,7 +806,7 @@ let W=null, WQ=[], WP=0;
 let WAHEAD=null;
 function wizQueue(){if(!W)return[];const {C,ci,vis}=W;const st=state[cur]||{};const q=[];const cur0=C.steps[ci];
  C.steps.forEach((s,i)=>{const due=WAHEAD?+s.d===+WAHEAD:(i<ci||(cur0&&+s.d===+cur0.d));if(!due)return;vis(i).forEach(k=>{if(!st[i+'-'+k])q.push([i,k])})});return q}
-function wizIcon(it){const t=(it[2]||'').replace(/<[^>]+>/g,'');const en=lang==='en';
+function wizIcon(it){const t=plain(it[2]||'');const en=lang==='en';
  if(/메일|e-mail|E-mail|draft to|Send the/.test(t))return['✉️',en?'Send by e-mail':'메일로 보내요'];
  if(/도서관 홈페이지|library website/.test(t))return['💻',en?'Upload on the library website':'도서관 홈페이지에 올려요'];
  if(/제본|bound/.test(t))return['📕',en?'Bind and hand in':'제본해서 내요'];
@@ -824,7 +827,7 @@ function wizAsk(){const en=lang==='en';const o=document.getElementById('wiz');co
  <p class="wonly">${en?'Your answer decides which forms you need. You can change it later on the main page.':'답에 따라 필요한 서류만 골라 드려요. 나중에 첫 화면 「내 상황」에서 바꿀 수 있어요.'}</p>
  <div class="wbtns"><button class="wb yn" id="q-yes">${en?'Yes':'네'}</button><button class="wb yn" id="q-no">${en?'No':'아니요'}</button></div>
  <div class="wnav"><button class="wl" id="q-skip">${en?'Not sure (ask later)':'잘 모르겠어요 (나중에 물어볼게요)'}</button><button class="wl" id="w-x">${en?'Close':'닫기'} ✕</button></div>`;
- const ans=v=>{state[cur]=state[cur]||{};const so=state[cur]._sit||{title:true};const as=state[cur]._asked||{};if(v!==null)so[k]=v;as[k]=1;state[cur]._sit=so;state[cur]._asked=as;save(state);WS.shift();render();if(WS.length)wizAsk();else{WQ=wizQueue();WP=0;wizShow()}};
+ const ans=v=>{const so=curSt()._sit||{title:true};const as=curSt()._asked||{};if(safeK(k)){if(v!==null)so[k]=v;as[k]=1}curSt()._sit=so;curSt()._asked=as;save(state);WS.shift();render();if(WS.length)wizAsk();else{WQ=wizQueue();WP=0;wizShow()}};
  o.querySelector('#q-yes').onclick=()=>ans(true);o.querySelector('#q-no').onclick=()=>ans(false);o.querySelector('#q-skip').onclick=()=>ans(null);o.querySelector('#w-x').onclick=wizClose;o.querySelector('#q-yes').focus()}
 function wizOpen(){WAHEAD=null;const o=document.getElementById('wiz');o.hidden=false;document.body.style.overflow='hidden';const as=(state[cur]||{})._asked||{};WS=SIT[cur].filter(k=>!as[k]);if(WS.length){wizAsk();return}WQ=wizQueue();WP=0;wizShow();}
 function wizClose(){document.getElementById('wiz').hidden=true;document.body.style.overflow='';render()}
@@ -850,7 +853,7 @@ function wizShow(){const o=document.getElementById('wiz');const en=lang==='en';c
  ${/메일|e-mail|E-mail|draft/.test(it[2])?`<button class="pvb wmail" id="w-mail">✉️ ${en?'Make the e-mail text for me':'메일 문구 만들어 보기'} →</button>`:''}
  <div class="wbtns"><button class="wb main" id="w-done">${en?'Done ✓':'했어요 ✓'}</button><button class="wb" id="w-skip">${it[0]==='o'?(en?'Not for me':'해당 없어요'):(en?'Later':'나중에 할게요')}</button></div>
  <div class="wnav"><button class="wl" id="w-prev" ${WP?'':'disabled'}>← ${en?'Back':'이전'}</button><button class="wl" id="w-x">${en?'Close':'닫기'} ✕</button></div>`;
- o.querySelector('#w-done').onclick=()=>{state[cur]=state[cur]||{};state[cur][i+'-'+k]=true;save(state);render();WP++;wizShow()};
+ o.querySelector('#w-done').onclick=()=>{curSt()[i+'-'+k]=true;save(state);render();WP++;wizShow()};
  o.querySelector('#w-skip').onclick=()=>{WP++;wizShow()};const wm=o.querySelector('#w-mail');if(wm)wm.onclick=()=>{wizClose();const m=document.getElementById('mailtpl');m.classList.add('open');setTimeout(()=>m.scrollIntoView({behavior:'smooth'}),50)};
  o.querySelector('#w-prev').onclick=()=>{if(WP){WP--;wizShow()}};
  o.querySelector('#w-x').onclick=wizClose;o.querySelector('#w-done').focus()}
@@ -932,7 +935,7 @@ function render(){setHelpText();renderBand();
  const st=state[cur]||{};
  const SL=SITL[lang];
  document.getElementById('sit').innerHTML=`<span class="lbl">${SL.lbl}</span>`+SIT[cur].map(k=>`<button class="chip" id="chip-${k}" data-s="${k}" aria-pressed="${sitOn(k)}">${SL[k]}</button>`).join('');
- document.getElementById('sit').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{state[cur]=state[cur]||{};const o=state[cur]._sit||{title:true};o[b.dataset.s]=!sitOn(b.dataset.s);state[cur]._sit=o;save(state);render()});
+ document.getElementById('sit').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{const o=curSt()._sit||{title:true};{const k=b.dataset.s;if(safeK(k))o[k]=!sitOn(k)}curSt()._sit=o;save(state);render()});
  const t=today();
  let ci=C.steps.findIndex(s=>dday(s.d)>=0); if(ci<0) ci=C.steps.length;
  const vis=i=>C.steps[i].items.map((_,k)=>k).filter(k=>shown(i,k));
@@ -945,7 +948,7 @@ function render(){setHelpText();renderBand();
   const n=document.createElement('button');n.className='tn';
   const v=vis(i);const done=v.length&&leftOf(i)===0;
   if(i<ci)n.classList.add(leftOf(i)?'late':'past'); if(i===ci)n.classList.add('cur'); if(done)n.classList.add('done');
-  const sh=t=>t.replace(/<[^>]+>/g,'').replace(/\s*\((?![^)]*(해당|applies))[^)]*\)/g,'').split(/ — | → /)[0].trim();
+  const sh=t=>plain(t).replace(/\s*\((?![^)]*(해당|applies))[^)]*\)/g,'').split(/ — | → /)[0].trim();
   const must=v.filter(k=>s.items[k][0]!=='o').map(k=>{const it=s.items[k];return (it[1]&&it[0]!=='o'?it[1].replace(/^(엑셀|한글|공통|XLS|HWP|Form|Sheet|Common) ?/,'$1 ')+' ':'')+sh(it[2])});
   const show=must.slice(0,3),rest=v.length-show.length;
   const dd=dday(s.d);const ddt=i<ci?(lang==='en'?'passed':'지남'):(dd===0?'D-day':'D-'+dd);
@@ -969,7 +972,7 @@ function render(){setHelpText();renderBand();
   else if(same.length){const tot=left+same.reduce((a,i)=>a+leftOf(i),0);const names=[s.short,...same.map(i=>C.steps[i].short)].join(' + ');what=lang==='en'?`<b>${tot}</b> item${tot===1?'':'s'} left by ${fmtL(s.d)} (${names}).`:`${fmtL(s.d)}까지 남은 준비물 <b>${tot}개</b> (${names}).`}
   else what=U.left(left)+'.';
   what+=` <a class="jump" href="#step-${ci}" onclick="document.getElementById('step-${ci}').scrollIntoView({behavior:'smooth'});return false">${lang==='en'?'See the list ↓':'준비물 보기 ↓'}</a>`;
-  const shx=t=>t.replace(/<[^>]+>/g,'').replace(/\s*\((?![^)]*(해당|applies))[^)]*\)/g,'').split(/ — | → /)[0].trim();
+  const shx=t=>plain(t).replace(/\s*\((?![^)]*(해당|applies))[^)]*\)/g,'').split(/ — | → /)[0].trim();
   const pend=[ci,...same].flatMap(i=>vis(i).filter(k=>!st[i+'-'+k]).map(k=>[i,k]));
   const mini=pend.length?`<ul class="mini">${pend.slice(0,5).map(([i,k])=>{const it=C.steps[i].items[k];return `<li><label><input type="checkbox" data-k="${i}-${k}"><span>${it[1]?`<i class="f ${it[0]}">${it[1]}</i> `:''}${esc(shx(it[2]))}</span></label></li>`}).join('')}${pend.length>5?`<li class="more">${lang==='en'?'+'+(pend.length-5)+' more in the list below':'나머지 '+(pend.length-5)+'개는 아래 목록에'}</li>`:''}</ul>`:'';
   const toTxt=s.to?s.to.replace(/^(제출|Submit to|Where)\s*:\s*/,''):'';
@@ -979,7 +982,7 @@ function render(){setHelpText();renderBand();
    <div><h2>${U.now}${s.h}</h2><p class="what">${what}</p>${mini}${toTxt?`<p class="where">${U.where}${toTxt}</p>`:''}<p class="where rule">${lang==='en'?'🖨 HWP forms: print and hand in · ✉️ Excel forms: send by e-mail':'🖨 한글 양식은 출력해서 종이로 · ✉️ 엑셀 양식은 이메일로'}</p>${hint}
    <div class="todaytxt">${U.todayis(fmtL(t))}</div>${quick}</div>`;
   const wb=document.getElementById('wiz-open');if(wb)wb.onclick=()=>wizOpen();
-  now.querySelectorAll('.mini input').forEach(cb=>cb.onchange=()=>{state[cur]=state[cur]||{};state[cur][cb.dataset.k]=true;save(state);render()});
+  now.querySelectorAll('.mini input').forEach(cb=>cb.onchange=()=>{{const k=cb.dataset.k;if(safeK(k))curSt()[k]=true}save(state);render()});
  } else {
   now.innerHTML=`${alert}<div class="dd">🎓</div><div><h2>${U.doneT}</h2><p class="what">${U.doneP}</p></div>`;
  }
@@ -992,7 +995,7 @@ function render(){setHelpText();renderBand();
   const stat=i<ci?(lf?`<span class="pill over">${U.pastOver(lf)}</span>`:`<span class="pill past">${U.pastDone}</span>`):i===ci?`<span class="pill cur">${U.cur}</span>`:`<span class="pill">D-${dday(s.d)}</span>`;
   let h=`<div class="when"><span class="num">${U.stage(i+1)} ${stat}</span><span class="date">${dlabel(s.d)}<small>(${dayL(s.d)})</small></span></div><h3>${s.h}</h3><p class="lead">${s.lead}</p>`;
   const hidNames=[];
-  if(s.items.length){h+='<ul class="items">';s.items.forEach((it,k)=>{if(!shown(i,k)){hidNames.push((it[2]||'').replace(/<[^>]+>/g,'').split(/[—(]/)[0].trim());return}tot++;const id=`${cur}-${i}-${k}`;const on=!!st[i+'-'+k];if(on)chk++;
+  if(s.items.length){h+='<ul class="items">';s.items.forEach((it,k)=>{if(!shown(i,k)){hidNames.push(plain(it[2]||'').split(/[—(]/)[0].trim());return}tot++;const id=`${cur}-${i}-${k}`;const on=!!st[i+'-'+k];if(on)chk++;
    const tag=it[1]?`<span class="f ${it[0]}">${it[1]}</span>`:'';const file=(it[3]?`<span class="file">📄 ${fn(it[3])}${dlBtn(it[3])}</span>`:'')+subOf(it);const hw=howOf(it);const pv=prevOf(it);const how=hw?`<details class="howd"><summary>${lang==='en'?'✏️ How to fill it in':'✏️ 쓰는 법'}</summary><p>${hw}</p>${exOf(it)}${pv?`<button class="pvb" onclick="zoomImg(this.querySelector('img').src)"><img src="${pv}" alt="" loading="lazy"><span>${lang==='en'?'This is the form — tap to enlarge':'이 종이예요 — 누르면 크게'}</span></button>`:''}</details>`:'';
    h+=`<li class="item${on?' checked':''}"><input type="checkbox" id="${id}" data-k="${i}-${k}" ${on?'checked':''}><label for="${id}">${tag}${it[2]}${file}</label>${how}</li>`});h+='</ul>';
    if(hidNames.length)h+=`<div class="hiddenn"><button class="hidbtn" data-reveal="${i}">${SL.hid(hidNames.length,hidNames.join(' · '))}</button></div>`}
@@ -1002,8 +1005,8 @@ function render(){setHelpText();renderBand();
   if(i>=ci)h+=`<a class="cal" href="${calLink(s,C)}" target="_blank" rel="noopener">📅 ${U.calAdd}</a>`;
   el.innerHTML=h;box.appendChild(el);
  });
- box.querySelectorAll('.hidbtn').forEach(b=>b.onclick=()=>{const i=+b.dataset.reveal;state[cur]=state[cur]||{};const o=state[cur]._sit||{title:true};Object.entries(COND[cur]).forEach(([k,c])=>{if(k.startsWith(i+'-'))o[c]=true});state[cur]._sit=o;save(state);render()});
- box.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.onchange=()=>{state[cur]=state[cur]||{};if(cb.checked)state[cur][cb.dataset.k]=true;else delete state[cur][cb.dataset.k];save(state);render()});
+ box.querySelectorAll('.hidbtn').forEach(b=>b.onclick=()=>{const i=+b.dataset.reveal;const o=curSt()._sit||{title:true};Object.entries(COND[cur]).forEach(([k,c])=>{if(k.startsWith(i+'-')&&safeK(c))o[c]=true});curSt()._sit=o;save(state);render()});
+ box.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.onchange=()=>{{const k=cb.dataset.k;if(safeK(k)){if(cb.checked)curSt()[k]=true;else delete curSt()[k]}}save(state);render()});
  const curV=ci<C.steps.length?vis(ci).length:0, curC=ci<C.steps.length?curV-leftOf(ci):0;
  document.getElementById('pfill').style.width=(tot?chk/tot*100:0)+'%';
  document.getElementById('ptxt').textContent=U.prog(chk,tot,curC,curV);
@@ -1024,8 +1027,8 @@ function render(){setHelpText();renderBand();
  if(focusId){const f=document.getElementById(focusId);if(f)f.focus({preventScroll:true})}
 }
 function syncHash(){const h=cur+(lang==='en'?'-en':'');try{if(location.hash!=='#'+h)history.replaceState(null,'','#'+h)}catch(e){}}
-function readHash(){const h=location.hash.slice(1);const m=h.match(/^(ms|phd)(-en)?(?:-([A-Za-z0-9_]+))?$/);if(m){cur=m[1];lang=m[2]?'en':'ko';return true}return false}
-function setCourse(c){cur=c;syncHash();render()}
+function readHash(){const h=location.hash.slice(1);const m=h.match(/^(ms|phd)(-en)?(?:-([A-Za-z0-9_]+))?$/);if(m){cur=m[1]==='phd'?'phd':'ms';lang=m[2]?'en':'ko';return true}return false}
+function setCourse(c){cur=c==='phd'?'phd':'ms';syncHash();render()}
 function setLang(l){lang=l;state._lang=l;save(state);syncHash();render()}
 document.getElementById('b-ms').onclick=()=>setCourse('ms');
 document.getElementById('b-phd').onclick=()=>setCourse('phd');
@@ -1040,7 +1043,7 @@ document.getElementById('m-copy').onclick=()=>{const txt=document.getElementById
 window.addEventListener('hashchange',()=>{if(readHash())render()});
 let armed=false;const rb=document.getElementById('reset'),cf=document.getElementById('confirm');
 rb.onclick=()=>{const U=T();if(!armed){armed=true;cf.hidden=false;cf.textContent=U.resetq;rb.textContent=U.reset2;setTimeout(()=>{armed=false;cf.hidden=true;rb.textContent=T().reset},4000);return}
- state[cur]={_sit:(state[cur]||{})._sit};save(state);armed=false;cf.hidden=true;render()};
+ {const c=cur==='phd'?'phd':'ms';state[c]={_sit:(state[c]||{})._sit}}save(state);armed=false;cf.hidden=true;render()};
 {const hadHash=readHash();const hasEn=/^#(ms|phd)-en/.test(location.hash);if(!hadHash&&state._lang)lang=state._lang;else if(!hasEn&&!state._lang){try{if(!/^ko/i.test(navigator.language||'ko'))lang='en'}catch(e){}}}
 if(0)document.getElementById('dept').onchange=e=>{dept=e.target.value;try{localStorage.setItem('gist-grad-dept',dept)}catch(x){}document.getElementById('editor').hidden=true;syncHash();render()};
 document.getElementById('ed-open').onclick=()=>openEditor(dept==='all');
